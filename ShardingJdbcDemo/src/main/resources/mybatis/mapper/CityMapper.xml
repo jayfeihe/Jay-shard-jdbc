@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jay.mapper.CityMapper">
+	<resultMap id="BaseResultMap" type="com.jay.model.City">
+		<id column="city_id" property="cityId" jdbcType="INTEGER" />
+		<result column="city_name" property="cityName" jdbcType="VARCHAR" />
+	</resultMap>
+	<select id="getCityByCityId" resultMap="BaseResultMap"
+		parameterType="int">
+		select city_id, city_name from t_city where
+		city_id=#{cityId}
+	</select>
+	<insert id="createCity" parameterType="com.jay.model.City">
+		insert into
+		t_city(city_id, city_name) values (#{cityId}, #{cityName})
+	</insert>
+</mapper>

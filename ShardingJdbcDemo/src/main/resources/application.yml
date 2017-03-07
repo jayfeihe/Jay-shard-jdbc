@@ -1,0 +1,40 @@
+spring:
+  redis:
+    host: localhost
+    port: 6379
+sharding:
+  jdbc:
+    driverClassName: com.mysql.jdbc.Driver
+    filters: stat
+    maxActive: 100
+    initialSize: 1
+    maxWait: 15000
+    minIdle: 1
+    timeBetweenEvictionRunsMillis: 30000
+    minEvictableIdleTimeMillis: 180000
+    validationQuery: SELECT 'x'
+    testWhileIdle: true
+    testOnBorrow: false
+    testOnReturn: false
+    poolPreparedStatements: false
+    maxPoolPreparedStatementPerConnectionSize: 20
+    removeAbandoned: true
+    removeAbandonedTimeout: 600
+    logAbandoned: false
+    connectionInitSqls:
+
+    masterUrl0: jdbc:mysql://localhost:3306/shard_1?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false
+    masterUsername0: root
+    masterPassword0: root
+
+    masterUrl1: jdbc:mysql://localhost:3306/shard_2?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false
+    masterUsername1: root
+    masterPassword1: root
+
+    slaveUrl0: jdbc:mysql://localhost:3306/shard_3?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false
+    slaveUsername0: root
+    slavePassword0: root
+
+    slaveUrl1: jdbc:mysql://localhost:3306/shard_4?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&failOverReadOnly=false
+    slaveUsername1: root
+    slavePassword1: root

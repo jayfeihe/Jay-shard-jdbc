@@ -1,0 +1,34 @@
+1.说明：
+使用当当开源的sharding-jdbc做分库分表。 resources/sql下的sql语句在两个不同的数据库下执行。(在两个主库下执行)
+
+city不分库不分表
+product分表不分库，分表键为：product_id
+user分库不分表。分库键键为：user_id
+order分库分表。分库键为：user_id，分表键为：order_id
+order_item分库分表。分库键为：order_id，分表键为：item_id
+
+读写分离
+主库：localhost shard_1、localhost shard_2
+从库：localhost shard_3、localhost shard_4
+
+#读写分离 主库：192.168.56.75、192.168.56.76 从库：192.168.56.73、192.168.56.74
+
+2.Swagger2参考文档：
+http://springfox.github.io/springfox/docs/current/
+
+3.关于数据的说明：
+  1.两个主库 shard_1、shard_2是分库的结果，
+    主库只负责写入数据
+  2.每个分库对应一个从库，
+    从库只负责读取数据
+          shard_3  是 shard_1 的从库
+          shard_2  是 shard_4 的从库
+  3.从库数据，自动与主库数据同步  (主从复制)
+    Mysql主从配置，实现读写分离
+    参考：
+        http://www.cnblogs.com/alvin_xp/p/4162249.html
+        http://blog.csdn.net/ohmygirl/article/details/40200061
+
+4.批量insert操作，一次最多允许插入1000条，如果数据量大，分多次批量插入即可
+  说明：
+      原生的Sharding-JDBC不支持批量插入，这里通过对List集合进行分库分表处理后再进行批量操作
