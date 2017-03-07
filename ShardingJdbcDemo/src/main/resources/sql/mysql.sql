@@ -1,6 +1,6 @@
-create database IF NOT EXISTS `test` DEFAULT CHARSET utf8 COLLATE utf8_general_ci;
+create database IF NOT EXISTS `shard_1` DEFAULT CHARSET utf8 COLLATE utf8_general_ci;
 
-use test;
+use shard_1;
 
 DROP TABLE IF EXISTS `t_city`;
 CREATE TABLE `t_city` (

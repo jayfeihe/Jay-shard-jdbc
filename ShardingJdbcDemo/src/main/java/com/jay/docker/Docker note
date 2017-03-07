@@ -1,0 +1,1188 @@
+1.容器操作：
+		1.查看dokcer信息或版本
+		  docker info 
+		  docker -v
+		2.获取docker所有命令
+		  docker help
+		  获取命令的参数
+		  man docker-命令
+		  eg:获取 docker run 命令的所有参数
+		     man docker-run  
+		3.基于docker镜像运行容器
+		  docker run -i -t --name 容器名 image:tag 程序
+		  -i 表示以交互方式运行容器
+		  -t 表示告诉docker为要创建的容器分配一个ty伪终端
+		  --name 指定创建的容器名，如果无此参数，docker将生成随机的容器名
+		  eg: 运行最新版本ubuntu的bash/shell程序
+		     docker run -i -t ubuntu /bin/bash
+		4.重启停止的容器
+		  docker start [-i] 容器名|容器id
+		  -i 表示以交互方式重启
+		  
+		  附着到容器上 
+		  docker attach 容器名|容器id
+		 
+		  停止运行的容器
+		  docker stop 容器名|容器id
+		  查看运行的容器
+		  docker ps
+		  查看所有容器
+		  docker ps -a
+		
+		5.后台启动容器  --- 创建守护式容器
+		  docker run --name 容器名 -d  镜像名 程序
+		  -d 参数表示 docker将会把容器放到后台运行，仅返回一个后台运行的容器id
+		  eg:在基于ubuntu镜像创建的容器111中，运行程序，每秒输出一个 hello docker，直到容器停止
+		    docker run --name 111 -d ubuntu /bin/sh -c "while true; do echo hello docker; sleep 1; done"
+		  
+		6.删除所有exited状态的容器
+		  docker rm $(docker ps -q -f status=exited)
+		  说明：
+		      docker ps -a -f status=exited   查询所有状态是exited的容器
+		      docker ps -q -f status=exited   查询所有状态是exited的容器的id
+		
+		7.查看容器运行日志
+		  docker logs 容器名 | 容器id       打印所有容器运行日志  
+		  docker logs -f 容器名 | 容器id    类似  tail -f 动态打印容器运行日志
+		  docker logs --tail lines -f 容器名 | 容器id    类似 tail -f --lines  从最后lines行开始，动态打印容器运行日志
+		  
+		  Ctrl + C 退出日志跟踪
+		  
+		8.容器内的进程
+		  查看容器内的进程
+		  docker top 容器名 | 容器id
+		  在容器内部运行进程
+		  docker exec -d 容器名 | 容器id 运行的进程
+		  说明：
+		      docker exec 可以在正在运行的容器中进行维护、监控及管理任务
+          eg1:
+             后台启动一个Tomcat容器
+             docker run -d --name tom1 tomcat
+             查看tom1容器内的进程
+             docker top tom1
+             在tom1容器中创建一个文件
+             docker exec -d tom1 touch /ect/test.tom1
+          eg2:
+             在tom1容器中启动一个打开shell的交互任务    ---  进入运行时容器的一种方式
+             docker exec -it tom1 /bin/bash   
+             在tom1容器中创建一个文件夹
+             docker exec -d tom1 mkdir /tom1
+        
+        9.自动重启容器
+          --restart标志，让docker自动重新启动容器， --restart标志会检查容器的退出代码，并以此决定是否要重启容器，Docker默认不会重启  
+          docker run --restart=always --name test1 -d ubuntu /bin/sh -c "while true; do echo hello docker; sleep 1; done"
+          解析：
+               --restart=always  无论容器的退出代码是什么，Docker都还自动重启容器
+               --restart=on-failure:5  当容器退出代码为非0时，Docker会尝试自动重启容器，最多重启5次
+         
+        10.深入容器
+           docker inspect 容器名 | 容器id    查看容器详细信息，对容器进行详细检查，返回其配置信息(名称、命令、网络配置等数据)
+        
+        11.删除容器   --- 必须先停止容器（stop 或 kill）
+           docker rm 容器名 | 容器id
+           一次性删除所有容器
+           docker rm $(docker ps -a -q)
+                 
+        12.2个有用的docker容器操作命令：
+        
+            1.删除所有已停止的容器
+              docker rm $(docker ps -q -f status=exited)
+            2.进入后台运行的容器
+              docker exec -it 容器名 /bin/bash
+              docker attach 容器名
+  
+2.镜像操作
+		1.镜像：文件系统的叠加，最底层是引导文件系统，建立在宿主机内核之上。
+		       一个镜像可以放到另一个镜像的顶部，位于下面的镜像称为父镜像，以此类推，直到最底部的镜像称为基础镜像
+		       当从一个镜像启动容器时，Docker会在该镜像的最顶层夹杂一个读写文件系统，运行的程序就在这个读写层中执行
+		       当Docker第一次启动一个容器时，初始的读写层是空的，当文件系统发生变化时，这些变化都会应用到这一层上，
+		       eg:
+		          如果想修改一个文件，这个文件首先会从该读写层下面的只读层复制到该读写层，该文件的只读版本依然存在，但已经被读写层还总的该文件副本所隐藏
+		       
+		         可写容器
+		           |
+		         Tomcat镜像
+                   |
+                 Ubuntu镜像
+                   |
+                 引导文件系统
+                   |
+                 宿主机内核
+        2.镜像仓库   docker官方
+             docker search 镜像    查询镜像
+             docker images        列出本地所有镜像
+             docker pull image:tag  拉取镜像，如果没有tag，默认拉取image镜像的最新版本 image:latest
+        
+        3.构建镜像  Dockerfile文件 + docker build 命令
+             1.创建docker hub帐号
+             2.docker login 登录
+             3.通过Dockerfile创建镜像
+               eg:创建一个nginx的基础镜像
+                  mkdir static_web
+                  cd static_web
+                  touch Dockerfile
+                  编辑Dockerfile内容如下：
+                    #Version: 0.0.1
+					FROM ubuntu:14.04
+					MAINTAINER Jay He jayhe@jayhe.com
+					RUN apt-get update
+					RUN apt-get install -y nginx
+					RUN echo 'Hi, I am in your container ' > /usr/shar/nginx/html/index.html
+					EXPOSE 80
+				  
+            4.基于Dockerfile文件创建镜像
+              docker build -t="author/image_name:tag" .
+              解析：
+                  -t  为新镜像设置了仓库和名称:版本标签  , 如果没有指定tag，Docker默认设置为latest标签
+                  .   最后的 . 告诉 Docker到本地目录中去找Dockerfile文件，
+                      也可通过一个git仓库的地址来指定Dockerfile位置
+                      eg：
+                         docker build -t="jay/static_web:v1" git@github.com:xx/docker-static_web
+                         
+            5.从新镜像启动容器
+              docker run -d -p 80 --name static_web jay/static_web:v1 nginx -g "daemon off"
+              解析：
+                  后台启动(适合nginx这样长时间运行的守护进程)一个名为static_web的容器，
+                  同时指定了需要在容器中运行的命令:nginx -g "daemon off" （以前台运行方式启动Nginx，作为我们的Web服务器）   
+                  -p 随机指定一个宿主机port映射到容器中的80端口
+                     -p port1:port     将容器的port端口，映射到宿主机的port1端口
+                     
+            6.Docker指令
+                  Dockerfile结构：
+				     FROM 基础镜像  第一条指令 	                  
+                     MAINTAINER  xx  作者信息
+                     RUN  xx     RUN指令会在当前镜像中运行指定的命令，这里通过RUN指令安装nginx包，然后创建一个index.html文件
+                     EXPOST port 指定对外的端口
+
+                  CMD 
+                               指定一个容器启动时要运行的命令， 指令会被docker run 命令行 参数 覆盖
+                               类似RUN指令，但：
+                                      RUN指令时指定镜像被构建时要运行的命令，
+                                      CMD 指定容器被启动时要运行的命令，类似 docker run 启动容器时，指定要运行的命令
+                                      eg：
+                                         docker run -it jay/static_web /bin/true
+                                         <==>
+                                         CMD ["bin/true"]
+                                      eg:为要运行的命令指定参数   ---  容器启动时，列出所有文件
+                                         CMD ["/bin/bash", "-l"]
+                              注意：
+                                  1.docker run 命令 会覆盖  CMD指令
+                                  2.指定了多条CMD指令，只会执行最后一条
+                              
+                  ENTRYPOINT
+                            指定一个容器启动时要运行的命令， 指令不会被docker run 命令覆盖，
+                            docker run 命令行中指定的参数都会被当作参数再次传递给 ENTRYPOINT指令中指定命令
+                            -build 参数  命令 覆盖配置
+                            eg:
+                              ENTRYPOINT["jekyll", "build", "--destination=/var/www/html"]
+                            eg:
+                              ENTRYPOINT ["/usr/sbin/nginx"]
+                              ENTRYPOINT ["/usr/sbin/nginx", "-g", "daemon off;"]  指令指定参数                          
+                            
+                  ADD
+                          用来将构建环境下的文件和目录复制到镜像中，
+                          ADD 源文件位置   目的文件位置
+                              源文件位置，可以时构建目录下的文件，也可以时网络文件
+                          eg：
+                             将构建目录下的software.lic 复制到  镜像中 /opt/application/software.lic 
+                             ADD software.lic /opt/application/software.lic 
+                          注意：
+                             ADD 再处理压缩文件(gzip,bzip2,gz)时，会自动解压
+                             eg:
+                               ADD latest.tar.gz /var/www/wordpress/
+                               将归档文件latest.tar.gz解压到/var/www/wordpress/目录下
+                           
+                  COPY
+                          类似ADD， 
+                             COPY  只关心在构建上下文中复制本地文件，而不去做文件提取和解压的工作
+                                   只能复制当前构建目录中的文件或目录
+                             eg：
+                                把本地conf.d目录中的文件复制到/etc/apache2/目录中
+                                COPY conf.d/ /etc/apache2/
+                                
+                  
+                 VOLUME
+                          用来向基于镜像创建的容器添加卷
+                          卷 可在容器间共享和重用
+                          对卷的修改时立时生效的，对卷的修改不会对更新镜像产生影响
+                          卷会一直存在，直到没有任何容器再使用它
+                          -v 参数 覆盖添加卷
+                          eg:
+                             通过数组方式指定多个卷，为基于此镜像的任何容器创建一个名为 /opt/project 和 /data的挂载点
+                             VOLUME ["/opt/project", "/data"]
+                          
+                 WORKDIR
+                          用来在从镜像创建一个新容器时，在容器内部设置一个工作目录， ENTRYPONT、CMD指定的程序会在这个目录下执行
+                          eg:
+                             WORKDIR /opt/webapp/db
+                             RUN bundle install
+                             WORKDIR /opt/webapp
+                             ENTRYPOINT ["rackup"]
+                          解析：
+                             工作目录切换为 /opt/webapp/db后运行bundle install 命令， 
+                             之后又将工作目录设置为 /opt/webapp,最后设置ENTRYPOINT指令来启动rackup命令
+                          注意：
+                             启动容器时，通过 -w 覆盖工作目录
+                             eg:
+                                将容器内的工作目录设置为 /var/log
+                                dockker run -ti -w /var/log ubuntu pwd
+                                
+                  
+                 USER
+                        指定该镜像会以什么样用户运行
+                        eg:
+                           USER nginx       基于该镜像启动的容器会以nginx用户的身份运行，如果不设置，默认用户是root
+                           docker run命令中  -u 参数，覆盖指定的值
+                  
+                 ONBUILD
+                  
+                        为镜像添加触发器，当一个镜像被用作其他镜像的基础镜像时，该镜像中的触发器将会被执行.
+                        触发器会在构建过程中插入新指令，可以认为这些指令时紧跟在FROM之后指定的，
+                        触发器可以时任何构建指令，
+                        ONBUILD指令可以在镜像上运行 docker inspect 命令查看
+                        eg:
+                          ONBUILD ADD . /app/src
+                          ONBUILD RUn cd /app/src && make
+                        解析：
+                          以此镜像作为基础进行时，会把当前目录添加到 /app/src/目录中，并在目标目录中，执行make操作进行编译 
+                          类似redis源码编译                         
+                  
+                 ENV
+                        设置环境变量
+                        这个新的环境变量可以在后续的任何RUN指令中使用，如同在命令前面指定了环境变量前缀一样
+                        eg:
+                          ENV TARGET_DIR /opt/app
+                          WORKDIR $TARGET_DIR
+                          
+            7.将镜像推送到Docker Hub
+                  docker push static_web
+                  
+            8.运行自己的 Docker  Registry    ---  自定义仓库，类似 maven私服
+                  1.拉取Docker Registry 镜像
+                    docker pull registry
+                  2.从容器运行Registry
+                    启动一个运行Registry的容器，并绑定到宿主机的5000端口
+                    docker run -p 5000:5000 registry
+                  3.推送镜像到自己的Registry 
+                    docker push IP:5000/author/image_name:tag
+                    eg:
+                       docker push 127.0.0.1:5000/jayhe/jdk8_tomcat8
+                    注意：一般先为要推送的镜像打tag，然后在推送到Registry
+                        1.打tag
+                           docker tag 镜像id 镜像名:tag
+                           docker tag 2hkjh3f jayhe/jdk8_tomcat8:v2
+                        2.推送到Registry
+                           docker push IP:5000/镜像名
+                           docker push 127.0.0.1:5000/jayhe/jdk8_tomcat8
+                           
+                           
+3.使用Docker
+    本地开发和测试：
+	    使用Docker测试一个静态网站
+	      1.创建目录
+	        mkdir static_web
+	        cd static_web
+	      2.下载2个配置文件
+	        global.conf
+	        wget https://raw.githubusercontent.com/jamtur01/dockerbook-code/master/code/5/sample/nginx/global.conf
+	        内容：
+	            server {
+				        listen          0.0.0.0:80;
+				        server_name     _;
+				
+				        root            /var/www/html/website;
+				        index           index.html index.htm;
+				
+				        access_log      /var/log/nginx/default_access.log;
+				        error_log       /var/log/nginx/default_error.log;
+				}
+	            
+	            配置解析：
+	                   将Nginx设置为监听80端口，并将网络服务的根路径设置为 /var/www/html/website
+	            
+	        nginx.conf
+	        wget https://raw.githubusercontent.com/jamtur01/dockerbook-code/master/code/5/sample/nginx/nginx.conf
+	        内容：
+	            user www-data;
+				worker_processes 4;
+				pid /run/nginx.pid;
+				daemon off;
+				
+				events {  }
+				
+				http {
+				  sendfile on;
+				  tcp_nopush on;
+				  tcp_nodelay on;
+				  keepalive_timeout 65;
+				  types_hash_max_size 2048;
+				  include /etc/nginx/mime.types;
+				  default_type application/octet-stream;
+				  access_log /var/log/nginx/access.log;
+				  error_log /var/log/nginx/error.log;
+				  gzip on;
+				  gzip_disable "msie6";
+				  include /etc/nginx/conf.d/*.conf;
+				}
+	            
+	            配置解析：
+	                   将Nginx配置为非守护进程模式，配置Nginx
+	        
+	      
+	      3.创建Dockerfile，添加以下内容：
+	        方式1：基于基础镜像Nginx创建 
+	            #Version: 0.0.1
+				FROM nginx 
+				MAINTAINER Jay He jayhe@jayhe.com
+				RUN mkdir -p /var/www/html
+				#删除nginx中的默认配置
+				RUN rm /etc/nginx/conf.d/default.conf
+				ADD global.conf /etc/nginx/conf.d/
+				ADD nginx.conf /etc/nginx/nginx.conf
+				EXPOSE 80
+
+
+	            
+	        方式2：基于基础镜像ubuntu14.04创建
+		        #Version: 0.0.1
+				FROM ubuntu:14.04
+				MAINTAINER Jay He jayhe@jayhe.com
+				RUN apt-get update
+				RUN apt-get -y -q install nginx
+				RUN mkdir -p /var/www/html
+				ADD global.conf /etc/nginx/conf.d/
+				ADD nginx.conf /etc/nginx/nginx.conf
+				EXPOSE 80
+				
+				Dockerfile解析：
+				    1.安装nginx
+				    2.在容器中创建目录 /var/www/html
+				    3.将下载的2个nginx配置文件添加到镜像中
+		            4.公开镜像的80端口    
+		            
+		  4.创建镜像
+		    docker build -t="jay/nginx:v1" .
+		    
+		  5.从Sample网站和刚创建的jay/nginx:v1镜像构建容器          
+		        1.创建目录
+			        mkdir sample 
+			        cd sample
+			        mkdir website && cd website
+		        2.获取文件,放到website目录中
+		            wget https://raw.githubusercontent.com/jamtur01/dockerbook-code/master/code/5/sample/website/index.html
+		        3.创建容器
+		            在website路径中，执行创建容器命令：
+		            docker run -d -p 8080:80 --name website -v $PWD/sample:/var/www/html/website jay/nginx:v1 nginx
+		            注意：
+		               1.当前路径  /home/jayhe/jay/docker/my_images/static_web
+		                         路径下sample目录中存放index.html
+		               2. -v target:destination 命令  挂载 宿主机target卷到容器的destination卷   
+		                  即：
+		                     宿主与容器共享文件(目录)
+		                     target下的文件，可以通过destination进行访问，这里 sample/index.html 与容器的/var/www/html/website/index.html是同一个
+		               
+		        4.进入已创建的容器，查看目录
+		            这里 1ce51 是运行的容器id
+		            docker exec -it 1ce51 /bin/bash        
+		            进入共享卷，共享目录 /var/www/html/website 与 宿主 $PWD/sample目录相同
+		            cd /var/www/html/website 
+		        
+		        5.修改网站内容   ---  修改宿主与容器共享卷里面的内容即可
+		            eg:
+		              修改 /home/jayhe/jay/docker/my_images/static_web/sample目录下的index.html，
+		              容器中/var/www/html/website目录下的index.html随之变化，
+		              localhost:8080 访问nginx即可看到变化
+		               
+		        特别注意：
+		             1.在创建的Nginx容器中，将卷(指定目录) $PWD/sample 挂载到容器的 /var/www/html/website/目录
+		             2.在nginx配置文件(/etc/nginx/conf.d/global.conf)中，指定了挂载后的目录 /var/www/html/website/ 作为Nginx服务器的工作目录
+		               注意：
+		                   如果时基于nginx创建的镜像，nginx基础镜像默认会将 /etc/nginx/conf.d/default.conf作为配置文件，
+		                   自定义的镜像，可以删除该默认配置，替换成自己的配置文件即可(方式1：创建nginx镜像)
+		                   
+	        
+	    使用Docker创建并测试一个Web应用 
+	        容器互联：
+	               流程：引用容器名字
+		           1.启动一个redis容器
+		                 docker run -d -p 6789:6379 --name redis_test1 redis
+		           2.本地连接redis容器
+		                 #进入宿主机redis目录
+		                 cd /home/jayhe/jay/soft/redis/redis-3.2.0/src
+		                 #通过宿主机redis客户端连接redis容器
+		                 ./redis-cli -h 127.0.0.1 -p 6789
+	               
+	               3.通过引用容器名字，实现两个容器的互联
+	                     --link 要连接的容器名   连接后容器的别名	                      
+	                      
+	                     docker run -p 4567:8080 --name webapp1 --link redis:redis_test1 -it -v $PWD/webapp:/opt/webapp jay/webapp:v1 /bin/bash
+	                     解析：
+	                         1.启动一个基于jay/webapp镜像的容器，映射容器端口8080到宿主机端口4567   
+                             2.将容器redis_test连接到容器webapp1,并使用db作为其别名
+                             3.将 $PWD/webapp挂载到容器/opt/webapp
+                         说明：
+                             1.--link arg1:arg2 标志创建2个容器间的父子连接，
+                                  arg1:  要连接的容器名字
+                                  arg2:  连接后容器的别名，别名可以让我们访问公开的信息，而无须关注底层容器的名字
+                                  连接让父容器可以访问子容器，并把子容器的一些连接细节分享给父容器，而不是公开
+                                  eg:
+                                     把新容器连接到redis容器，并使用db作为redis容器别名
+                                     --link redis:db  
+                            注意：
+                                1.启动redis容器时，并不需要用 -p 公开redis的端口，通过容器连接，可以让父容器直接访问任意子容器的公开端口
+                                 （eg:父容器webapp可以连接到子容器redis的6739端口）
+                                2.只有使用--link标志连接到这个容器才能连接到这个端口，容器的端口不需要对本宿主机公开，保证了容器访问的安全
+                                3.可以把多个容器连接在一起，如果想让多个web程序连接到redis实例，则可以把多个web应用和同一个redis容器连接到一起
+	                              docker run -p 4567:8080 --name webapp1 --link redis:db ....
+	                              docker run -p 4568:8080 --name webapp2 --link redis:db ....
+	                              docker run -p 4569:8080 --name webapp3 --link redis:db ....
+	                              注意：
+	                                  被连接的容器必须运行在同一个Docker宿主机上，不同的宿主机上运行的容器无法连接！！！
+	                            4.Docker父容器里的2个地方写入了连接信息
+	                                  1. /etc/hosts文件中
+	                                  2. 包含连接信息的环境变量中
+	                                  eg1:
+		                                     进入父容器，查看 /etc/hosts文件
+		                                     root@8fd812gd:/# cat /etc/hosts
+		                                     172.17.0.71 8fd812gd
+		                                     ...
+		                                     172.17.0.67 db
+		                                  解析：
+		                                     1.  第一行：容器自己的IP地址和主机名(住寂寞时容器ID的一部分)
+		                                    	 最后一行：由该连接创建的，它时redis容器的IP地址贺从该连接的别名衍生的主机名db
+		                                     2.在父容器中 ping db 可以查看被连接容器ip
+		                                     3.为容器设定主机名
+		                                       docker run 命令使用 -h 或 --hostname 来为容器设定主机名   
+	                                  eg2:
+	                                         父容器中运行env命令查看环境变量，也可查看容器连接信息
+	                
+	                4.使用容器连接来通信    
+	                   
+    
+    Docker用于构建和测试
+     	将Docker用于持续集成         
+     	  1.使用Dokcer hub的官方Jenkins镜像  
+	     	    1.基于jenkins镜像创建容器   --- 创建后台运行的jenkins容器
+	     	      docker run -p 8080:8080 --name jenkins -d jenkins
+	     	    2.进入创建的容器  87b9 是jenkins容器的id
+	     	      docker exec -it 87b9 /bin/bash
+	     	    3.获取初始密码，在访问时需要使用
+	     	      jenkins@87b958faabb3:/$ cd /var/jenkins_home/secrets/ 
+	     	      jenkins@87b958faabb3:/$ cat initialAdminPassword
+	     	      得到jenkins的初始密码
+	     	    4.访问jenkins
+	     	      localhost:8080, 输入出初始化密码，装插件，设置用户，开始使用Jenkins
+     	 
+     	 2.自定义Jenkins镜像    ---  基于自定义的Dockerfile创建自己的jenkins镜像，使用方法与上面一样
+
+
+
+3.使用Dokcer构建服务
+      1.构建应用    Jekyll镜像 + Apache镜像 + github 实现博客
+         2个镜像：
+                jekyll镜像和Apache镜像
+         2个容器：
+		        从Jekyll镜像创建容器，这个容器存放通过卷挂载的网站源代码
+		        从Apache镜像创建容器，这个容器利用包含编译后的网站的卷，并为其服务
+		 1.拉取2个镜像
+		        docker pull eboraas/apache
+		        docker pull jekyll/jekyll
+		 2.创建2个容器   
+		        1.创建jekyll容器，并挂载卷， 利用卷可以在容器间共享数据     
+		          docker run -v /home/jayhe/jay/docker/my_images/jay_jekyll/jay/james_blog:/data/ --name jay_blog jekyll/jekyll
+		            Configuration file: /srv/jekyll/_config.yml
+					            Source: /srv/jekyll
+					       Destination: /srv/jekyll/_site
+					 Incremental build: disabled. Enable with --incremental
+					      Generating... 
+					                    done in 0.149 seconds.
+					 Auto-regeneration: enabled for '/srv/jekyll'
+					Configuration file: /srv/jekyll/_config.yml
+					    Server address: http://0.0.0.0:4000/
+					  Server running... press ctrl-c to stop.
+							             
+		          解析：
+		             启动一个容器blog，把本地james_blog目录作为 /data/卷挂载到该容器中，
+		             容器拿到网站源代码，并将其构建到已编译的网站，存放到 /srv/jekyll/_site 目录
+		        
+		        2.创建Apache容器
+		          docker run -d -p 8080:80 -v /home/jayhe/jay/docker/my_images/jay_jekyll/jay/james_blog/_site:/var/www/html eboraas/apache
+		          解析：
+		              -v /home/jayhe/jay/docker/my_images/jay_jekyll/jay/james_blog/_site:/var/www/html  
+		              解析：
+		                 1.将生成的网站目录 _site 共享到Apache容器的 /var/www/html目录
+		                 2./var/www/html 是Apache容器的工作目录，放到这里的内容才能被apache解析
+		                 3.通过 localhost:8080 访问apache服务， 可以看到_site中的内容
+
+4.Docker MySQL 实现主从复制+读写分离 (1 Master + 2 Slave)
+  1.要求：
+      3个mysql版本一致
+      初始化表，并在后台启动mysql
+      修改root密码
+      
+      
+  修改配置文件：
+           启动一个docker mysql 容器，并进入，复制其配置文件 /etc/mysql/my.cnf到本地，作为基础配配置
+           >docker run --name db1 -p 30000:3306 -d -e MYSQL_ROOT_PASSWORD='root' mysql:5.6
+            757b456814f4c13ae9559e3723ad5025f2e787fb003a1b7e32f675e4874d5f50
+            docker exec -it 757b /bin/bash
+            cat /etc/mysql/my.cnf
+            拷贝内容到 /home/jayhe/jay/config/mysql/master_2slave/my-m.cnf 作为基础配置，下面的修改都是基于这个基础配置
+            
+            
+  2.修改主服务器master:
+      my.cnf
+         [mysqld]
+         #[必须]启动二进制日志
+         log-bin=mysql-bin
+         #[必须]设置服务器唯一ID，默认时1,一般取IP最后一段
+         server-id=3001 
+  3.修改从服务器slave:
+      my.cnf
+         [mysqld]
+         #[非必须]启动二进制日志
+         log-bin=mysql-bin
+         #[必须]设置服务器唯一ID，默认时1,一般取IP最后一段
+         server-id=3002
+      
+      my.cnf
+         [mysqld]
+         #[非必须]启动二进制日志
+         log-bin=mysql-bin
+         #[必须]设置服务器唯一ID，默认时1,一般取IP最后一段
+         server-id=3003
+       
+  启动3个mysql:
+         主服务器：挂载   /xx/xx/my.cnf(主服务器配置)到mysql容器
+             docker run --name mysql1 -p 3001:3306 -d -v /home/jayhe/jay/config/mysql/master_2slave/my-m.cnf:/etc/mysql/my.cnf -e MYSQL_ROOT_PASSWORD='root' mysql:5.6
+         从服务器：挂载   /xx/xx/my.cnf(从服务器配置)到mysql容器
+             docker run --name mysql2 -p 3002:3306 -d -v /home/jayhe/jay/config/mysql/master_2slave/my-s1.cnf:/etc/mysql/my.cnf -e MYSQL_ROOT_PASSWORD='root' mysql:5.6
+             docker run --name mysql3 -p 3003:3306 -d -v /home/jayhe/jay/config/mysql/master_2slave/my-s2.cnf:/etc/mysql/my.cnf -e MYSQL_ROOT_PASSWORD='root' mysql:5.6
+ 
+  连接容器中的mysql   ---  即使本地mysql每启动，仍然可以连接容器的mysql服务
+         语法:
+             mysql -h IP -P port -uroot -proot
+         
+         连接主服务器
+         mysql -h 127.0.0.1 -P 3001 -uroot -proot     
+         登录主服务器，创建账户并授权
+         grant replication slave on *.* to 'mysync'@'%' identified by 'root';
+         查看主服务器状态
+         show master status;
+			+------------------+----------+--------------+------------------+-------------------+
+			| File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
+			+------------------+----------+--------------+------------------+-------------------+
+			| mysql-bin.000004 |      312 |              |                  |                   |
+			+------------------+----------+--------------+------------------+-------------------+
+			         
+         
+         登录从服务器:
+         mysql -h 127.0.0.1 -P 3002 -uroot -proot
+         
+         配置从服务器：  
+                    ---  这里的 master_log_file='mysql-bin.000004', master_log_pos与主服务器中的master status一致
+         change master to master_host='172.17.64.106',master_port=3001,master_user='mysync',master_password='root',master_log_file='mysql-bin.000004', master_log_pos=312;
+ 
+        启动从服务器复制功能
+         start slave;
+                 
+        查看从服务器复制功能状态：
+         show slave status;
+        +----------------------------------+---------------+-------------+-------------+---------------+------------------+---------------------+-------------------------+---------------+-----------------------+------------------+-------------------+-----------------+---------------------+--------------------+------------------------+-------------------------+-----------------------------+------------+------------+--------------+---------------------+-----------------+-----------------+----------------+---------------+--------------------+--------------------+--------------------+-----------------+-------------------+----------------+-----------------------+-------------------------------+---------------+---------------+----------------+----------------+-----------------------------+------------------+--------------------------------------+----------------------------+-----------+---------------------+-----------------------------------------------------------------------------+--------------------+-------------+-------------------------+--------------------------+----------------+--------------------+--------------------+-------------------+---------------+
+		| Slave_IO_State                   | Master_Host   | Master_User | Master_Port | Connect_Retry | Master_Log_File  | Read_Master_Log_Pos | Relay_Log_File          | Relay_Log_Pos | Relay_Master_Log_File | Slave_IO_Running | Slave_SQL_Running | Replicate_Do_DB | Replicate_Ignore_DB | Replicate_Do_Table | Replicate_Ignore_Table | Replicate_Wild_Do_Table | Replicate_Wild_Ignore_Table | Last_Errno | Last_Error | Skip_Counter | Exec_Master_Log_Pos | Relay_Log_Space | Until_Condition | Until_Log_File | Until_Log_Pos | Master_SSL_Allowed | Master_SSL_CA_File | Master_SSL_CA_Path | Master_SSL_Cert | Master_SSL_Cipher | Master_SSL_Key | Seconds_Behind_Master | Master_SSL_Verify_Server_Cert | Last_IO_Errno | Last_IO_Error | Last_SQL_Errno | Last_SQL_Error | Replicate_Ignore_Server_Ids | Master_Server_Id | Master_UUID                          | Master_Info_File           | SQL_Delay | SQL_Remaining_Delay | Slave_SQL_Running_State                                                     | Master_Retry_Count | Master_Bind | Last_IO_Error_Timestamp | Last_SQL_Error_Timestamp | Master_SSL_Crl | Master_SSL_Crlpath | Retrieved_Gtid_Set | Executed_Gtid_Set | Auto_Position |
+		+----------------------------------+---------------+-------------+-------------+---------------+------------------+---------------------+-------------------------+---------------+-----------------------+------------------+-------------------+-----------------+---------------------+--------------------+------------------------+-------------------------+-----------------------------+------------+------------+--------------+---------------------+-----------------+-----------------+----------------+---------------+--------------------+--------------------+--------------------+-----------------+-------------------+----------------+-----------------------+-------------------------------+---------------+---------------+----------------+----------------+-----------------------------+------------------+--------------------------------------+----------------------------+-----------+---------------------+-----------------------------------------------------------------------------+--------------------+-------------+-------------------------+--------------------------+----------------+--------------------+--------------------+-------------------+---------------+
+		| Waiting for master to send event | 172.17.64.106 | mysync      |        3001 |            60 | mysql-bin.000004 |                 409 | mysqld-relay-bin.000002 |           380 | mysql-bin.000004      | Yes              | Yes               |                 |                     |                    |                        |                         |                             |          0 |            |            0 |                 409 |             554 | None            |                |             0 | No                 |                    |                    |                 |                   |                |                     0 | No                            |             0 |               |              0 |                |                             |             3001 | 735f9147-d3ec-11e6-b8c6-0242ac120002 | /var/lib/mysql/master.info |         0 |                NULL | Slave has read all relay log; waiting for the slave I/O thread to update it |              86400 |             |                         |                          |                |                    |                    |                   |             0 |
+		+----------------------------------+---------------+-------------+-------------+---------------+------------------+---------------------+-------------------------+---------------+-----------------------+------------------+-------------------+-----------------+---------------------+--------------------+------------------------+-------------------------+-----------------------------+------------+------------+--------------+---------------------+-----------------+-----------------+----------------+---------------+--------------------+--------------------+--------------------+-----------------+-------------------+----------------+-----------------------+-------------------------------+---------------+---------------+----------------+----------------+-----------------------------+------------------+--------------------------------------+----------------------------+-----------+---------------------+-----------------------------------------------------------------------------+--------------------+-------------+-------------------------+--------------------------+----------------+--------------------+--------------------+-------------------+---------------+
+		注意：
+		    Slave_IO_State  =  Waiting for master to send event
+		    Slave_IO和Slave_SQL 都是 YES
+		    则表示主从复制配置成功
+		
+   测试主从复制：
+        进入主服务器，创建一个数据库
+	        mysql -h 127.0.0.1 -P 3001 -uroot -proot
+	        create database test1;
+        进入从服务器，查看数据库，发现已经存在了test1   --- 与主服务器同步
+            mysql -h 127.0.0.1 -P 3001 -uroot -proot
+            mysql> show databases;
+				+--------------------+
+				| Database           |
+				+--------------------+
+				| information_schema |
+				| mysql              |
+				| performance_schema |
+				| test1              |
+				+--------------------+
+            
+            
+     特别注意：
+		       1.主服务器中，创建账户并授权
+		           grant replication slave on *.* to 'mysync'@'%' identified by 'root';
+		           一般不用root账户，
+		           *.* 表示所有客户端都可连，只要账户和密码正确，这里可用具体IP代替，加强安全 eg： 192.168.145.222
+		           
+		       2.从服务器中，配置从服务器时：
+		           master_host 为docker的宿主机地址，    不能写  127.0.0.1
+		           master_port 为主服务器mysql映射到宿主机的端口  3001
+		           master_user 为主服务器中创建的用户            mysync
+		           master_log_file 为主服务器show master status查询出来的 File
+		           master_log_pos 为主服务器show master status查询出来的 Position   		    
+               
+               3.配置文件其他内容配置项：
+                    #如果需要增加Slave库则，此id往后顺延；  
+					server-id = 2    
+					log-bin=mysql-bin  
+					#主库host  
+					master-host = 192.168.168.253  
+					#在主数据库服务器中建立的用于该从服务器备份使用的用户  
+					master-user = forslave  
+					master-password = ******  
+					master-port = 3306  
+					#如果发现主服务器断线，重新连接的时间差；  
+					master-connect-retry=60  
+					#不需要备份的数据库；   
+					replicate-ignore-db=mysql  
+					#需要备份的数据库  
+					replicate-do-db=minishop  
+					log-slave-update 
+             
+               4.从MySQL镜像容器中获取的 my.cnf 基础配置 
+                    # Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+					#
+					# This program is free software; you can redistribute it and/or modify
+					# it under the terms of the GNU General Public License as published by
+					# the Free Software Foundation; version 2 of the License.
+					#
+					# This program is distributed in the hope that it will be useful,
+					# but WITHOUT ANY WARRANTY; without even the implied warranty of
+					# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+					# GNU General Public License for more details.
+					#
+					# You should have received a copy of the GNU General Public License
+					# along with this program; if not, write to the Free Software
+					# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+					
+					#
+					# The MySQL Community Server configuration file.
+					#
+					# For explanations see
+					# http://dev.mysql.com/doc/mysql/en/server-system-variables.html
+					
+					[client]
+					port		= 3306
+					socket		= /var/run/mysqld/mysqld.sock
+					
+					[mysqld_safe]
+					pid-file	= /var/run/mysqld/mysqld.pid
+					socket		= /var/run/mysqld/mysqld.sock
+					nice		= 0
+					
+					[mysqld]
+					user		= mysql
+					pid-file	= /var/run/mysqld/mysqld.pid
+					socket		= /var/run/mysqld/mysqld.sock
+					port		= 3306
+					basedir		= /usr
+					datadir		= /var/lib/mysql
+					tmpdir		= /tmp
+					lc-messages-dir	= /usr/share/mysql
+					explicit_defaults_for_timestamp
+					log-bin=mysql-bin
+					server-id=3001
+					# Instead of skip-networking the default is now to listen only on
+					# localhost which is more compatible and is not less secure.
+					#bind-address	= 127.0.0.1
+					
+					#log-error	= /var/log/mysql/error.log
+					
+					# Recommended in standard MySQL setup
+					sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
+					
+					# Disabling symbolic-links is recommended to prevent assorted security risks
+					symbolic-links=0
+					
+					# * IMPORTANT: Additional settings that can override those from this file!
+					#   The files must end with '.cnf', otherwise they'll be ignored.
+					#
+					!includedir /etc/mysql/conf.d/
+
+
+5.使用Docker构建Java应用服务
+        1.下载war包：http://tomcat.apache.org/tomcat-8.0-doc/appdev/sample/sample.war
+        2.启动Tomcat容器，并通过卷共享方式，将war包放到Tomcat容器的webapp目录下
+           共享卷方式
+		          #>pwd
+		            /home/jayhe/jay/docker/my_images/demo_dir/demo1/fetcher
+		          #>ls
+		            sample.war
+		          //交互方式创建一个tomcat容器,注意：容器中内容/usr/local/tomcat/webapps/ 会被当前目录内容覆盖
+		          #>docker run -it -p 8888:8080 --name tomcat1 -v $PWD/:/usr/local/tomcat/webapps/ tomcat
+		            163eeqa9dfdf789g8sd
+		          //进入容器，可以查看容器里的内容
+		          #>docker exec -it 163e /bin/bash
+		     注意：
+		         一般启动tomat时，通过 -d 参数，让容器后台运行即可
+		3.访问 localhost:8888 即可看到sample.war运行结果
+		    
+
+6.主机与容器的文件共享
+       1.从容器到主机拷贝数据
+          docker cp 容器id：容器待文件路径 主机文件路径
+       2.主机与容器共享数据   --- 挂载卷
+          docker run -d -v 主机文件目录/:容器文件目录
+          
+7.Docker通过owncloud镜像+mysql搭建个人云
+       1.启动一个mysql容器，作为个人云的db，mysql用户和密码 root:root,端口3001，容器名: own_cloud_db
+         #> docker run --name own_cloud_db -p 3001:3306 -d -e MYSQL_ROOT_PASSWORD='root' mysql:5.6
+            16ecb4fd0a50eb57b7a7ec9fa4bf2d1584e4982364fb654d5e657db8dce46705
+         #连接mysql数据库，并常见数据库 owncloud    
+         #> mysql -h 127.0.0.1 -P 3001 -uroot -proot
+         mysql> create database owncloud;
+            特别注意：
+                  docker mysql创建的容器，-h 只能通过IP指定，不能用 localhost !!! 
+                  
+       2.启动一个owncloud容器, 访问端口 8899, 容器名：owncloud，通过容器互联，连接上面建立的mysql数据库
+        #> docker run -d -p 8899:80 --name owncloud --link own_cloud_db:mysql owncloud
+		   118acf7a59f47b36ce7a0aa78f225661c5731f72a85d9d380d40ca4b032b917c
+	    说明：
+	       默认owncloud使用sqlLite保存数据（访问时，直接创建用户即可）	   
+       
+       3.访问个人云 localhost:8899，使用MySQL数据库，创建用户，并设置使用的数据库连接信息
+         用户名：root
+         密码：  root
+         数据目录： 
+                /var/www/html/data
+         数据库信息： MySQL/MariaDB
+            root
+            root
+            owncloud
+            mysql
+
+        特别注意！！！：
+            这里的数据库连接，owncloud通过容器连接访问mysql，使用mysql连接别名作为数据库主机地址！！！
+            
+8.Dokcer多容器的应用栈   --- 构建一系列镜像来支持部署多容器的应用
+          Node应用会运行在一个容器里，后面会挂载以主从模式配置在多个容器里的Redis集群，一个日志容器用于收集日志信息
+        1.一个Node容器，用来服务于Node应用，这个容器会连接到
+        2.一个Redis主容器，用于保存和集群化应用状态，这个容器会连接到
+        3.两个redis备份容器，用于集群化应用状态
+        4.一个日志容器，用于捕获应用日志
+        
+        1.基于redis的主从复制   1主2从
+              1.静态方式   redis.conf中，从服务配置slaveof
+              2.动态方式： 执行命令slaveof
+        
+	          docker run -d -p 6001:6379 --name master redis
+	          docker run -d -p 6002:6379 --name slave1 redis
+	          docker run -d -p 6003:6379 --name slave2 redis
+	          连接到2个slave，分别指定主服务器：
+		          ./redis-cli -h localhost -p 6002
+		          >slaveof 172.18.0.1 6001	
+		          ./redis-cli -h localhost -p 6003
+		          >slaveof 172.18.0.1 6001
+	          登录主服务器和从服务器，查看redis的主从配置信息：
+	          info
+	              主服务器：
+	                    role:master
+						connected_slaves:1
+						slave0:ip=172.18.0.1,port=6379,state=online,offset=463,lag=1
+	              从服务器：
+	                    role:slave
+						master_host:172.18.0.1
+						master_port:6001
+						master_link_status:up
+          特别注意：
+                 1.slaveof IP port 中 IP不能用localhost和127.0.0.1代替，要用真实IP地址
+                 2.退出主从关系  slaveof no one
+                 3.关闭redis服务器
+                      redis-cli -h ip -p port shutdown
+                 
+        
+        2.搭建redis集群
+             1.基于ubuntu的多个redis节点集群
+	                 1.修改redis.conf 
+	                            cluster-enabled  yes
+	                            cluster-node-timeout 5000
+	                 2.复制每个redis.conf到3个redis中
+	                 3.启动3个节点：
+	                            ./redis-server ../redis.conf --port 6379
+	                            ./redis-server ../redis.conf --port 6380
+	                            ./redis-server ../redis.conf --port 6381
+	                            关键信息：
+		                              3个启动的节点都出现：* No cluster configuration found, I'm 2006e82cd8c52535991fbcc662032ac0ff4a1811
+		                              表示redis服务器正在运行集群模式
+	                 4.连接启动的3个节点
+	                        node1 6379
+	                        node1 6380
+	                        node1 6381
+	                        说明： 
+	                                它们都处于失联状态，我们现在开始配置将它们彼此连接起来，Redis有一个连接节点的工具称为redis-trib.rb. 
+	                                它是一个ruby文件，需要 redis gem被安装
+	                  1.安装ruby
+	                        sudo apt-get install ruby
+	                        sudo apt-get install rubygems  #如果可以执行gem命令，则不需要此步骤
+	                  2.安装redis
+	                        gem install redis
+	                  3.执行创建集群命令
+	                        ./redis-trib.rb create 127.0.0.1:6379 127.0.0.1:6380 127.0.0.1:6381
+	                        
+	                        每个节点负责数据的1/3，键入 'yes'
+	             
+		             5.连接其中的一个节点，查看redis集群状态
+		                   src/redis-cli -h node2 cluster nodes
+		                   
+		                   ./redis-cli -p 6379
+		                   >cluster info
+		                   
+		             6.关于Redis集群节点的管理：
+		                参考：blog.51yip.com/nosql/1726.html          
+             
+             2.基于Docker创建redis集群
+                  docker的redis镜像默认配置：/usr/local/etc(空)，可通过共享卷方式，为容器添加redis配置
+                  1.创建目录，并拷贝一份redis.conf配置到此目录
+	                  #> mkdir redis_cluster
+	                  #> cp /xx/xx/redis.conf  /yy/yy/redis.conf
+                  
+                  2.修改redis.conf中配置信息：
+                      redis配置  --- 支持集群模式  (与本地redis集群配置不同)
+			               redis.conf配置的主要信息： (注意：集群一定要把protected设置为no，并注释掉bind地址，否在会报错：connection reset by peer)
+			                   cluster-enabled yes
+			                   protected-mode no
+			                   #bind 127.0.0.1
+			                   
+			                   --------华丽的分割线----------------
+			                   --------剩下的配置可忽略-------------
+			                   
+			                   #节点配置文件
+			                   cluster-config-file nodes-6379.conf
+			                   #节点超时毫秒
+			                   cluster-node-timeout 15000
+			                   #默认yes，只要节点宕机，则整个集群就全部停止服务，一定要改为no
+			                   cluster-require-full-coverage no
+			                   
+                  
+                  3.启动redis容器，启动redis-server的同时指定所用的配置文件
+                     #> docker run -d -p 6001:6379 --name redis1 -v $PWD:/usr/local/etc/ redis redis-server /usr/local/etc/redis.conf
+                        1b6f3d60568783132c5963fc63cde567f099460ad317304e8722542deb11362f
+                  4.查看启动信息
+                     #> docker logs 1b6f3 -f
+                        1:M 10 Jan 05:39:38.864 * No cluster configuration found, I'm e540f37a6cf0d7f4683e2ae867d3cd4977808532
+                        说明：
+                            出现 No cluster configuration found, I'm e540f 说明，该节点已处于集群模式
+                  5.同样的方式再启动2个redis容器          
+                     #> docker run -d -p 6002:6379 --name redis2 -v $PWD:/usr/local/etc/ redis redis-server /usr/local/etc/redis.conf
+                     #> docker run -d -p 6003:6379 --name redis3 -v $PWD:/usr/local/etc/ redis redis-server /usr/local/etc/redis.conf
+                  
+                  6.其他的同本地创建redis集群相同
+                  
+                  
+                  
+                  
+                  
+	             1.redis配置  --- 支持集群模式
+	               redis.conf配置的主要信息：
+	                   cluster-enabled yes
+	                   #节点配置文件
+	                   cluster-config-file nodes-6379.conf
+	                   #节点超时毫秒
+	                   cluster-node-timeout 15000
+	                   #默认yes，只要节点宕机，则整个集群就全部停止服务，一定要改为no
+	                   cluster-require-full-coverage no
+	                   
+	             2.基于redis基础镜像，创建自己的redis镜像
+	               Dockerfile内容：
+		                FROM redis
+						COPY redis.conf /usr/local/etc/redis/redis.conf
+						CMD ["redis-server","/usr/local/etc/redis/redis.conf"]
+						
+			     3.创建镜像
+			            docker build -t="jay/redis:v1" .
+			
+	             4.基于镜像jay/redis:v1创建3个redis容器
+	                    docker run -d -p 7001:6379 --name redis1 jay/redis:v1
+	                    docker run -d -p 7002:6379 --name redis2 jay/redis:v1
+	                    docker run -d -p 7003:6379 --name redis3 jay/redis:v1
+        
+9.Docker使用Nginx+redis+2 Tomcat实现负载均衡
+             1.创建2个Tomcat容器 tomcat1、tomcat2
+	              #> pwd
+		             /home/jayhe/jay/docker/my_images/demo_dir/demo1/fetcher
+		          #> ls
+		             sample.war
+	              #> docker run -d -p 8001:8080 -v $PWD:/usr/local/tomcat/webapps/ --name tomcat1 tomcat
+	              #> docker run -d -p 8002:8080 -v $PWD:/usr/local/tomcat/webapps/ --name tomcat2 tomcat
+	              说明：
+	                  1.当前目录会覆盖到tomcat容器的/usr/local/tomcat/webapps/目录，并与容器共享该目录
+	                  2.通过localhost:8001/sample、localhost:8002/sample 可以访问容器运行结果
+            
+             2.启动一个nginx容器，并将配置拷贝(或通过加载卷方式)到容器
+                  1.nginx配置，添加请求拦截和负载均衡
+                     1.从nginx容器中拷贝一份容器的默认配置(/etc/nginx/conf.d/default.conf)到本地
+                       #>/home/jayhe/jay/docker/my_images/demo_dir/demo1/loadbalance_nginx
+                       #>ls
+                         default.conf
+                     2.编辑default.conf，添加如下内容：
+                        #配置负载均衡
+						upstream blance{
+						      server 172.18.0.1:8001 weight=5;
+						      server 172.18.0.1:8002 weight=5;
+						}
+						
+						#在server模块中引用负载配置
+						server {
+						    listen       80;
+						    server_name  172.18.0.1;
+						
+						    #charset koi8-r;
+						    #access_log  /var/log/nginx/log/host.access.log  main;
+						
+						#    location / {
+						#        root   /usr/share/nginx/html;
+						#        index  index.html index.htm;
+						#    }
+						    
+						#   / 表示监听80端口下的所有请求，并使用设置的upstream作为代理
+						    location / {
+						        proxy_pass http://blance;
+						    }
+						    
+						......
+						}
+						                         
+	                  说明：
+	                      1.nginx镜像中配置文件默认位置：/etc/nginx/conf.d/default.conf
+	                      2.将本地nginx配置文件，通过卷共享方式覆盖default.conf即可
+                          3.default.conf的配置，使用IP，不再用localhost和127.0.0.1
+                 
+                 2.启动nginx，通过共享卷方式导入配置文件 
+                          docker run -d -p 8000:80 --name nginx1 -v $PWD:/etc/nginx/conf.d/ nginx        
+                 
+           3.访问应用
+                  1.负载均衡方式访问：   按照nignx的负载配置，选择要访问的tomcat
+                        http://localhost:8000/sample
+                  2.访问指定的tomcat:
+                        http://localhost:8001/sample
+                        或
+                        http://localhost:8002/sample
+
+10.Docker中使用zabbix做监控
+           镜像官网: https://hub.docker.com/r/monitoringartist/zabbix-3.0-xxl/
+		    1.安装服务端
+		       安装：   (zabbix，busybox，mysql，mariadb)
+		         1.安装镜像
+		             docker pull monitoringartist/zabbix-3.0-xxl
+			     docker pull busybox:latest
+			     #zabbix使用mariadb
+		             docker pull zabbix-db-mariadb
+		
+		             #依赖mysql，mysql安装后的默认路径 /var/lib/mysql
+		             
+		         2.安装zabbix-db-storage    ---  启动zabbix db 数据库
+		             docker run -d -v /var/lib/mysql --name zabbix-db-storage busybox:latest
+		         3.安装zabbix-db  默认 innodb_buffer_size 1G
+		             docker run \
+		    -d \
+		    --name zabbix-db \
+		    -v /backups:/backups \
+		    -v /etc/localtime:/etc/localtime:ro \
+		    --volumes-from zabbix-db-storage \
+		    --env="MARIADB_USER=zabbix" \
+		    --env="MARIADB_PASS=my_password" \
+		    monitoringartist/zabbix-db-mariadb
+		         4.安装zabbix 3.0   ---  启动zabbix Server
+		             docker run \
+		    -d \
+		    --name zabbix \
+		    -p 8000:80 \
+		    -p 10051:10051 \
+		    -v /etc/localtime:/etc/localtime:ro \
+		    --link zabbix-db:zabbix.db \
+		    --env="ZS_DBHost=zabbix.db" \
+		    --env="ZS_DBUser=zabbix" \
+		    --env="ZS_DBPassword=my_password" \
+		    monitoringartist/zabbix-3.0-xxl:latest
+		
+		        说明：
+		             1.等待60秒后，Zabbix Web在8000端口运行，Zabbix Server在10051端口运行
+		             2.访问Zabbix Web 
+		                      http://localhost:8000/
+		                      默认用户名密码：
+		                          Admin  zabbix
+		                      用户名和密码，参考：http://www.jiaozn.com/reed/171.html
+		             3.官方zabbix使用mariadb作为数据库，如果安装了mysql，可用mysql作为zabbx的数据库，
+		               用户名和密码，在数据库中都可以查看和更改               	      
+		
+		
+		
+		    2.本机安装Zabbix客户端  (在需要监控的机器上安装zabbix-agent，并做相应配置)  
+		      注意：
+		          zabbix客户端启动文件：/usr/sbin/zabbix_agentd
+		          zabbix的配置文件地址：/ect/zabbix/zabbix_agentd.conf
+		
+		      安装：
+			      sudo apt-get update
+			      sudo apt-get install zabbix-agent
+		      配置：
+		              /etc/zabbix/zabbix_agentd.conf
+		         修改以下几个IP：
+		              Server=192.168.1.198  #server端ip  
+			      ServerActive=192.168.1.198  #server端ip  
+			      Hostname=192.168.1.104  #本机的ip或者本机的name 
+		      启动服务：
+		              service zabbix-agentd start
+		
+		          注意：如果无法启动，则手动启动服务  /usr/sbin  目录下执行  zabbix-agentd
+		              /usr/sbin# ./zabbix_agentd 
+		
+		   3.Docker安装Zabbix客户端
+		      1.安装zabbix-agent客户端
+		       	     docker pull monitoringartist/zabbix-agent-xxl-limited
+		      2.安装zabbix-template
+		             docker pull monitoringartist/zabbix-templates
+		
+		
+		  4.Zabbix服务端Web页面添加监控主机
+		        参考：
+		             blog.csdn.net/linux_player_c/article/details/50405690（zabbix的基本配置和使用）
+		           
+11.ELk搭建日志分析系统：基于ES 5+
+          常见错误说明：
+              1.启动elasticsearch报错：
+                     max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]
+                 解决：root用户下，修改/etc/sysctl.conf文件，添加以下内容：
+                     #> vi /etc/sysctl.conf
+                        vm.max_map_count=655360
+                     #执行下面的命令
+                     #> sysctl -p
+                     #最后重启elasticsearch即可
+              2.Kibana No default index pattern warning
+                     unable to fetch mapping, Do you have indices matching the pattern?
+                     原因：说明logstash没有把日志写入到elasticsearch
+                     解决：检查logstash与elasticsearch之间的通讯问题，是否连接上
+              3.其他常见问题：
+                     参考： http://www.ttlsa.com/log-system/troubleshooting-elk-common-issues/                 
+                     
+          
+          1.启动ES容器
+              #> docker run -d --name myes elasticsearch
+              查看日志
+              #> docker logs myes -f
+              注意：
+                 如果启动失败，以交互方式启动，查看失败原因
+                 docker run -it --name myes elasticsearch
+          
+          2.启动kibina容器   与 es通过容器互联
+              #> docker run -d --name mykibana --link myes:elasticsearch -p 5601:5601 -d kibana
+              或
+              #> docker run -d --name mykibana -e elasticsearch_url=http://127.0.0.1:9200 -p 5601:5601 -d kibana             
+          3.启动logstash    与 es通过容器互联
+              #> docker run -it --link myes:elasticsearch --rm logstash -e 'input {stdin {} }  output {elasticsearch {hosts=>["elasticsearch:9200"]} stdout { } }'
+              启动后在控制台输入信息，将会看到输入的结果(这个结果会发送给elasticsearch，供kibana查询)
+          4.访问kibina
+              http://localhost:5601
+              通过logstash存储的日志，默认:logstash-*
+              创建一个新的index  pattern，即可通过kibana查询
+          
+          5.类似参考：
+              blog.csdn.net/sbsujjbcy/article/details/52335325
+
+
+12.基于Docker的wonderfall/nextcloud搭建个人云：
+            docker镜像地址： https://hub.docker.com/r/wonderfall/nextcloud/
+          1.拉去nextcloud最新镜像
+             #> docker pull wonderfall/nextcloud
+             
+          2.启动一个mysql容器，作为个人云的db，mysql用户和密码 root:root,端口3002，容器名: db_nextcloud
+	         #> docker run --name db_nextcloud -p 3002:3306 -d -e MYSQL_ROOT_PASSWORD='root' mysql:5.6
+	            16ecb4fd0a50eb57b7a7ec9fa4bf2d1584e4982364fb654d5e657db8dce46705
+	         #连接mysql数据库，并常见数据库 owncloud    
+	         #> mysql -h 127.0.0.1 -P 3001 -uroot -proot
+	         mysql> create database nextcloud;
+	            特别注意：
+	                  docker mysql创建的容器，-h 只能通过IP指定，不能用 localhost !!!               
+          3.启动nextcloud容器   --- 通过容器互联方式，连接mysql作为数据库，设置nextcloud的参数，并指定数据库连接信息
+             #>docker run -d --name nextcloud -p 9999:8888 \
+		       --link db_nextcloud:db_nextcloud \
+		       -e UID=1000 -e GID=1000 \
+		       -e UPLOAD_MAX_SIZE=10G \
+		       -e APC_SHM_SIZE=128M \
+		       -e OPCACHE_MEM_SIZE=128 \
+		       -e REDIS_MAX_MEMORY=64mb \
+		       -e CRON_PERIOD=15m \
+		       -e TZ=Etc/UTC \
+		       -e ADMIN_USER=root \
+		       -e ADMIN_PASSWORD=root \
+		       -e DB_TYPE=mysql \
+		       -e DB_NAME=nextcloud \
+		       -e DB_USER=root \
+		       -e DB_PASSWORD=root \
+		       -e DB_HOST=db_nextcloud \
+		       wonderfall/nextcloud                              
+         4.访问nextcloud
+               http://localhost:9999/
+     
+13.eclipse che 通过docker启动
+       镜像：
+           eclipse/che
+           eclipse/che-init
+           eclipse/che-server
+           eclipse/che-cli
+       通过启动che-cli容器，即可，访问：localhost:8080
+       启动容器命令：
+           docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock -v $PWD:/data eclipse/che-cli start
+           说明：
+               启动时间会有点长！！！
+               访问地址：localhost:8080
+      停止che
+           docker run eclipse/che-cli stop
+      重启che
+           docker run eclipse/che-cli restart
+                
+           
+14.
+
+
+     	 
+     	              
+     	                    
+                      
+                  
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
